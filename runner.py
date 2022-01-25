@@ -43,7 +43,7 @@ def get_main_parser():
     parser.add_argument('--wf',
                         '--workflow',
                         dest='workflow',
-                        choices=['ttcom', 'case', 'mixing'],
+                        choices=['ttcom', 'case', 'mixing', 'jetlibrary'],
                         help='Which processor to run',
                         required=True)
     parser.add_argument('-o', '--output', default=r'hists.coffea', help='Output histogram filename (default: %(default)s)')
@@ -157,7 +157,10 @@ if __name__ == '__main__':
         processor_instance = NanoProcessor()
     elif args.workflow == "mixing":
         from workflows.case_mixing import NanoProcessor
-        processor_instance = NanoProcessor(isMC=args.isMC,sample=args.dataset)
+        processor_instance = NanoProcessor(isMC=args.isMC,sample=args.dataset,output_location="/mnt/hadoop/scratch/bmaier/")
+    elif args.workflow == "jetlibrary":
+        from workflows.case_jetlibrary import NanoProcessor
+        processor_instance = NanoProcessor(isMC=args.isMC,sample=args.dataset,output_location="/mnt/hadoop/scratch/bmaier/")
     else:
         raise NotImplemented
 
@@ -316,7 +319,7 @@ if __name__ == '__main__':
             import socket
             cluster = HTCondorCluster(
                 cores=1,
-                memory='8GB', # hardcoded
+                memory='4GB', # hardcoded
                 disk='1GB',
                 death_timeout = '60',
                 nanny = False,

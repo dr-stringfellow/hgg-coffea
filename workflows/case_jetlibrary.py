@@ -268,22 +268,16 @@ class NanoProcessor(processor.ProcessorABC):
                 nested_m
             ),axis=2)
 
-        #print(all_pfcands)
-
+        # Write-out
 
         fname = (
             events.behavior["__events_factory__"]._partition_key.replace("/", "_").replace("%2F","").replace("%3B1","")
             + ".h5"
             )
 
-        print(fname)
         subdirs = []
         if "dataset" in events.metadata:
-            subdirs.append(f'dataset={events.metadata["dataset"]}')        
-
-        print(subdirs)
-
-        print(all_fatjet_features)
+            subdirs.append(f'{events.metadata["dataset"]}')
 
         self.dump_pandas(all_fatjet_features, 
                          all_extra_features, 
