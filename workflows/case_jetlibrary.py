@@ -109,7 +109,10 @@ class NanoProcessor(processor.ProcessorABC):
         )
 
         with h5py.File(local_file, "w") as f:
+            f.create_dataset("event_info", data=npevt, chunks = True, maxshape=(None, npevt.shape[1]))
             f.create_dataset("jet_kinematics", data=npkin, chunks = True, maxshape=(None, npkin.shape[1]))
+            f.create_dataset("jet_extraInfo", data=npextra, chunks = True, maxshape=(None, npextra.shape[1]))
+            f.create_dataset("jet_PFCands", data=nppf, chunks = True, maxshape=(None, nppf.shape[1], 4))
 
         if xrootd:
             copyproc = XRootD.client.CopyProcess()
@@ -186,7 +189,7 @@ class NanoProcessor(processor.ProcessorABC):
         events.Photon = events.Photon[(((events.Photon.mvaID_WP80 > self.pho_mva80_barrel) & (abs(events.Photon.eta) <= 1.479))
                                       | ((events.Photon.mvaID_WP80 > self.pho_mva80_endcap) & (abs(events.Photon.eta) <= 2.4) 
                                          & (abs(events.Photon.eta) <= 2.4))) & (events.Photon.pt > 300)]
-        req_pho = (ak.count(events.Photon.pt > 300, axis=1) == 1)
+        req_pho = (ak.count(events.Photon.pt > 220, axis=1) == 1)
 
 
         ## Preselection        
@@ -205,7 +208,7 @@ class NanoProcessor(processor.ProcessorABC):
 
         ## FatJet cuts
         _nearPho = selev.FatJet.delta_r(ak.firsts(selev.Photon)) < 0.8
-        kinematic_mask = ((selev.FatJet.pt > 260) & (abs(selev.FatJet.eta) <= 2.4) 
+        kinematic_mask = ((selev.FatJet.pt > 300) & (abs(selev.FatJet.eta) <= 2.4) 
                        & (selev.FatJet.isTight == 1))
         mask_fatjet = ~_nearPho & kinematic_mask
         idx = ak.local_index(mask_fatjet, axis=1)
