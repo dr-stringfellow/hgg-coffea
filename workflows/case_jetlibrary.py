@@ -185,111 +185,64 @@ class NanoProcessor(processor.ProcessorABC):
         # Get PF constituents in right shape --> they are saved as [nevent,[fj1const1,fj1const2,...,fj1constN,fj2const1,...]]
         # But we need them like [nevent, fjs, consts]
         pfidxs = ak.materialized(selev.FatJetPFCands.jetIdx)
-        #print(pfidxs)
         counts = ak.run_lengths(pfidxs)
-        #print("counts")
-        #print(counts)
+
         nested_pt = ak.unflatten(selev.PFCands.pt, ak.flatten(counts), axis=1)
         nested_eta = ak.unflatten(selev.PFCands.eta, ak.flatten(counts), axis=1)
         nested_phi = ak.unflatten(selev.PFCands.phi, ak.flatten(counts), axis=1)
         nested_m = ak.unflatten(selev.PFCands.mass, ak.flatten(counts), axis=1)
-        #print("nested_pt")
-        #print(nested_pt)
-
-
 
         ## FatJet cuts
         _nearPho = selev.FatJet.delta_r(ak.firsts(selev.Photon)) < 0.8
         kinematic_mask = ((selev.FatJet.pt > 260) & (abs(selev.FatJet.eta) <= 2.4) 
                        & (selev.FatJet.isTight == 1))
         mask_fatjet = ~_nearPho & kinematic_mask
-        #mask_fatjet = kinematic_mask
         idx = ak.local_index(mask_fatjet, axis=1)
         flat_idx = idx[mask_fatjet]
+
+        #print(flat_idx)
 
         nested_pt = self.prepare_const(nested_pt,mask_fatjet)
         nested_eta = self.prepare_const(nested_eta,mask_fatjet)
         nested_phi = self.prepare_const(nested_phi,mask_fatjet)
         nested_m = self.prepare_const(nested_m,mask_fatjet)
 
-        
-        print(nested_pt)
-        print("XXXX")
-        print(len(nested_pt))
-        #print(nested_pt.shape)
-
-
-
-
-        '''
-        print("mask_fatjet")
-        print(mask_fatjet)
-        print("flat_idx")
-        print(flat_idx)
-        print("event")
-        print(selev.event)
-        '''
-
         selev.FatJet = selev.FatJet[mask_fatjet]
-        req_fatjets = (ak.count(selev.FatJet.pt, axis=1) >= 1)
+        req_fatjets = (ak.count(selev.FatJet.pt, axis=1) >= 1)        
 
-
-        #print("req_fatjets")
-        #print(req_fatjets)
-        #print("len(req_fatjets)")
-        #print(len(req_fatjets))
-
-
-        
         ## FatJets of all events - remove first dimension 
         nFatJet = ak.count(selev.FatJet.eta,axis=-1)
-
-        #print("nFatJet")
-        #print(nFatJet)
-        #print("len(nFatJet)")
-        #print(len(nFatJet))
-        
         all_fatjets_pt = np.log(ak.flatten(selev.FatJet.pt))
-
-        #print("pt")
-        #print(all_fatjets_pt)
-        #print("len(pt)")
-        #print(len(all_fatjets_pt))
-
         all_fatjets_eta = ak.flatten(selev.FatJet.eta)
         all_fatjets_phi = ak.flatten(selev.FatJet.phi)
         all_fatjets_e = np.log(ak.flatten(selev.FatJet.energy))
-        all_fatjets_msoftdrop = np.log(ak.flatten(selev.FatJet.msoftdrop))
+        all_fatjets_msoftdrop = ak.flatten(selev.FatJet.msoftdrop)
+
+        all_fatjets_tau1 = ak.flatten(selev.FatJet.tau1)
+        all_fatjets_tau2 = ak.flatten(selev.FatJet.tau2)
+        all_fatjets_tau3 = ak.flatten(selev.FatJet.tau3)
+        all_fatjets_tau4 = ak.flatten(selev.FatJet.tau4)
+        all_fatjets_lsf3 = ak.flatten(selev.FatJet.lsf3)
+        all_fatjets_nPF = ak.count_nonzero(nested_pt,axis=1)
+
+        all_sj1 = ak.flatten(selev.SubJet.btagDeepB[selev.FatJet.subJetIdx1])
+        all_sj2 = ak.flatten(selev.SubJet.btagDeepB[selev.FatJet.subJetIdx2])
+        all_sj = np.stack((np.array(all_sj1),np.array(all_sj2)),axis=1)
+        
         all_fatjets_eventNumber = np.repeat(selev.event,nFatJet)
-
-        #print("evtNumber")
-        #print(all_fatjets_eventNumber)
-        #print("len(evtNumber)")
-        #print(len(all_fatjets_eventNumber))
-
         all_fatjets_idx = ak.flatten(flat_idx)
 
-        '''
-        print("fjidx")
-        print(all_fatjets_idx)
-
-
-        print("############")
-        print("Constituents")
-
-        print(selev.FatJetPFCands.pt)
-        print(selev.FatJetPFCands.jetIdx)
-
+        all_fatjet_features = np.stack((np.array(all_fatjets_pt),np.array(all_fatjets_eta),
+                                 np.array(all_fatjets_phi),np.array(all_fatjets_e),
+                                 np.array(all_fatjets_msoftdrop)),axis=1)     
         
-        all_features = np.stack((np.array(all_fatjets_pt),np.array(all_fatjets_eta),
-                                 np.array(all_fatjets_phi),np.array(all_fatjets_e)),axis=1)
+        # tau1, tau2, tau3, tau3, lsf3, max subjet b tag, nPF
+        all_extra_features = np.stack((np.array(all_fatjets_tau1),np.array(all_fatjets_tau2),
+                                       np.array(all_fatjets_tau3),np.array(all_fatjets_tau4),
+                                       np.array(all_fatjets_lsf3),np.amax(all_sj,1),
+                                       np.array(all_fatjets_nPF)),axis=1)
 
-        kdtree = KDTree(all_features)
-
-        # FatJet PF candidates
-        print("Can it find it?")
-        '''
-
+        all_event_features = np.stack((np.array(all_fatjets_eventNumber),np.array(all_fatjets_idx)),axis=1)
                 
         return output
 
