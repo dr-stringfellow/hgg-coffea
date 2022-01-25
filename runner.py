@@ -4,6 +4,10 @@ import json
 import argparse
 import time
 
+import logging
+logger = logging.getLogger('simple_example')
+logger.setLevel(logging.DEBUG)
+
 import numpy as np
 
 import uproot
@@ -39,7 +43,7 @@ def get_main_parser():
     parser.add_argument('--wf',
                         '--workflow',
                         dest='workflow',
-                        choices=['ttcom', 'fattag'],
+                        choices=['ttcom', 'case', 'mixing'],
                         help='Which processor to run',
                         required=True)
     parser.add_argument('-o', '--output', default=r'hists.coffea', help='Output histogram filename (default: %(default)s)')
@@ -51,7 +55,7 @@ def get_main_parser():
     parser.add_argument('--executor', 
                         choices=[
                             'iterative', 'futures', 'parsl/slurm', 'parsl/condor', 
-                            'dask/condor', 'dask/slurm', 'dask/lpc', 'dask/lxplus', 'dask/casa',
+                            'dask/condor', 'dask/slurm', 'dask/lpc', 'dask/lxplus', 'dask/casa', 'dask/mit',
                         ], 
                         default='futures',
                         help='The type of executor to use (default: %(default)s). Other options can be implemented. '
@@ -62,6 +66,7 @@ def get_main_parser():
                              '- `dask/condor` - tested at DESY, RWTH'
                              '- `dask/lpc` - custom lpc/condor setup (due to write access restrictions)'
                              '- `dask/lxplus` - custom lxplus/condor setup (due to port restrictions)'
+                             '- `dask/mit` - custom lxplus/condor setup (due to port restrictions)'
                         )
     parser.add_argument('-j', '--workers', type=int, default=12,
                         help='Number of workers (cores/threads) to use for multi-worker executors '
@@ -78,8 +83,10 @@ def get_main_parser():
     parser.add_argument('--skipbadfiles', action='store_true', help='Skip bad files.')
     parser.add_argument('--only', type=str, default=None, help='Only process specific dataset or file')
     parser.add_argument('--limit', type=int, default=None, metavar='N', help='Limit to the first N files of each dataset in sample JSON')
+    parser.add_argument('--isMC', type=int, default=1, help="Specify if the file is MC or data")
     parser.add_argument('--chunk', type=int, default=500000, metavar='N', help='Number of events per process chunk')
     parser.add_argument('--max', type=int, default=None, metavar='N', help='Max number of chunks to run in total')
+    parser.add_argument('--dataset', type=str, default="X", help="Dataset to find xsection")
     return parser
 
 
@@ -143,11 +150,14 @@ if __name__ == '__main__':
 
     # load workflow
     if args.workflow == "ttcom":
-        from workflows.ttbar_validation2 import NanoProcessor
+        from workflows.ttbar_validation import NanoProcessor
         processor_instance = NanoProcessor()
-    # elif args.workflow == "fattag":
-    #     from workflows.fatjet_tagger import NanoProcessor
-    #     processor_instance = NanoProcessor()
+    elif args.workflow == "case":
+        from workflows.case_validation import NanoProcessor
+        processor_instance = NanoProcessor()
+    elif args.workflow == "mixing":
+        from workflows.case_mixing import NanoProcessor
+        processor_instance = NanoProcessor(isMC=args.isMC,sample=args.dataset)
     else:
         raise NotImplemented
 
@@ -261,6 +271,7 @@ if __name__ == '__main__':
         from dask_jobqueue import SLURMCluster, HTCondorCluster
         from distributed import Client
         from dask.distributed import performance_report
+        
 
         if 'lpc' in args.executor:
             env_extra = [
@@ -298,6 +309,32 @@ if __name__ == '__main__':
                 extra = ['--worker-port {}'.format(n_port)],
                 env_extra = env_extra,
             )
+        elif 'mit' in args.executor:
+            n_port = 8786
+            #if not check_port(8786):
+            #    raise RuntimeError("Port '8786' is not occupied on this node. Try another one.")
+            import socket
+            cluster = HTCondorCluster(
+                cores=1,
+                memory='8GB', # hardcoded
+                disk='1GB',
+                death_timeout = '60',
+                nanny = False,
+                scheduler_options={
+                    #'port': n_port,
+                    'host': socket.gethostname()
+                    },
+                job_extra={
+                    'log': 'dask_job_output.log',
+                    'output': 'dask_job_output.out',
+                    'error': 'dask_job_output.err',
+                    'should_transfer_files': 'Yes',
+                    'when_to_transfer_output': 'ON_EXIT',
+                    '+SingularityImage': '"/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el7:latest"',
+                    },
+                #extra = ['--worker-port {}'.format(n_port)],
+                env_extra = env_extra,
+            )
         elif 'slurm' in args.executor:
             cluster = SLURMCluster(
                 queue='all',
@@ -322,7 +359,8 @@ if __name__ == '__main__':
             shutil.make_archive("workflows", "zip", base_dir="workflows")
             client.upload_file("workflows.zip")
         else:
-            cluster.adapt(minimum=args.scaleout)
+            #cluster.adapt(minimum=args.scaleout)
+            cluster.scale(jobs=args.scaleout)
             client = Client(cluster)
             print("Waiting for at least one worker...")
             client.wait_for_workers(1)
@@ -335,7 +373,8 @@ if __name__ == '__main__':
                                                   'client': client,
                                                   'skipbadfiles': args.skipbadfiles,
                                                   'schema': processor.NanoAODSchema,
-                                                  'retries': 3,
+                                                  'xrootdtimeout': 10,
+                                                  'retries': 10,
                                               },
                                               chunksize=args.chunk,
                                               maxchunks=args.max)
