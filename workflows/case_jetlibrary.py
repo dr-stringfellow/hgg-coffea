@@ -5,6 +5,11 @@ import numpy as np
 import awkward as ak
 from sklearn.neighbors import KDTree
 import pandas
+import h5py
+import os
+import pathlib
+import shutil
+import warnings
 
 class NanoProcessor(processor.ProcessorABC):
     # Define histograms
@@ -69,7 +74,10 @@ class NanoProcessor(processor.ProcessorABC):
 
     def dump_pandas(
         self,
-        pddf: pandas.DataFrame,
+        npkin: np.array,
+        npextra: np.array,
+        npevt: np.array,
+        nppf: np.array,
         fname: str,
         location: str,
         subdirs: Optional[List[str]] = None,
@@ -99,7 +107,10 @@ class NanoProcessor(processor.ProcessorABC):
             if xrootd
             else os.path.join(location, os.path.join(merged_subdirs, fname))
         )
-        pddf.to_parquet(local_file)
+
+        with h5py.File(local_file, "w") as f:
+            f.create_dataset("jet_kinematics", data=npkin, chunks = True, maxshape=(None, npkin.shape[1]))
+
         if xrootd:
             copyproc = XRootD.client.CopyProcess()
             copyproc.add_job(local_file, destination)
@@ -210,13 +221,18 @@ class NanoProcessor(processor.ProcessorABC):
         selev.FatJet = selev.FatJet[mask_fatjet]
         req_fatjets = (ak.count(selev.FatJet.pt, axis=1) >= 1)        
 
-        ## FatJets of all events - remove first dimension 
+        ## FatJets of all events
         nFatJet = ak.count(selev.FatJet.eta,axis=-1)
-        all_fatjets_pt = np.log(ak.flatten(selev.FatJet.pt))
-        all_fatjets_eta = ak.flatten(selev.FatJet.eta)
-        all_fatjets_phi = ak.flatten(selev.FatJet.phi)
-        all_fatjets_e = np.log(ak.flatten(selev.FatJet.energy))
-        all_fatjets_msoftdrop = ak.flatten(selev.FatJet.msoftdrop)
+
+        # pt, eta, phi, e, msd
+        all_fatjet_features = np.stack(
+            (
+                np.array(np.log(ak.flatten(selev.FatJet.pt))),
+                np.array(ak.flatten(selev.FatJet.eta)),
+                np.array(ak.flatten(selev.FatJet.phi)),
+                np.array(np.log(ak.flatten(selev.FatJet.energy))),
+                np.array(ak.flatten(selev.FatJet.msoftdrop))
+            ),axis=1)     
 
         all_fatjets_tau1 = ak.flatten(selev.FatJet.tau1)
         all_fatjets_tau2 = ak.flatten(selev.FatJet.tau2)
@@ -228,13 +244,7 @@ class NanoProcessor(processor.ProcessorABC):
         all_sj1 = ak.flatten(selev.SubJet.btagDeepB[selev.FatJet.subJetIdx1])
         all_sj2 = ak.flatten(selev.SubJet.btagDeepB[selev.FatJet.subJetIdx2])
         all_sj = np.stack((np.array(all_sj1),np.array(all_sj2)),axis=1)
-        
-        all_fatjets_eventNumber = np.repeat(selev.event,nFatJet)
-        all_fatjets_idx = ak.flatten(flat_idx)
 
-        all_fatjet_features = np.stack((np.array(all_fatjets_pt),np.array(all_fatjets_eta),
-                                 np.array(all_fatjets_phi),np.array(all_fatjets_e),
-                                 np.array(all_fatjets_msoftdrop)),axis=1)     
         
         # tau1, tau2, tau3, tau3, lsf3, max subjet b tag, nPF
         all_extra_features = np.stack((np.array(all_fatjets_tau1),np.array(all_fatjets_tau2),
@@ -242,8 +252,45 @@ class NanoProcessor(processor.ProcessorABC):
                                        np.array(all_fatjets_lsf3),np.amax(all_sj,1),
                                        np.array(all_fatjets_nPF)),axis=1)
 
-        all_event_features = np.stack((np.array(all_fatjets_eventNumber),np.array(all_fatjets_idx)),axis=1)
-                
+        # evtNumber, fjIdx
+        all_event_features = np.stack(
+            (
+                np.array(np.repeat(selev.event,nFatJet)),
+                np.array(ak.flatten(flat_idx))
+            ),axis=1)
+
+        # pfCands
+        all_pfcands = np.stack(
+            (
+                nested_pt,
+                nested_eta,
+                nested_phi,
+                nested_m
+            ),axis=2)
+
+        #print(all_pfcands)
+
+
+        fname = (
+            events.behavior["__events_factory__"]._partition_key.replace("/", "_").replace("%2F","").replace("%3B1","")
+            + ".h5"
+            )
+
+        print(fname)
+        subdirs = []
+        if "dataset" in events.metadata:
+            subdirs.append(f'dataset={events.metadata["dataset"]}')        
+
+        print(subdirs)
+
+        print(all_fatjet_features)
+
+        self.dump_pandas(all_fatjet_features, 
+                         all_extra_features, 
+                         all_event_features, 
+                         all_pfcands, 
+                         fname, self.output_location, subdirs)
+
         return output
 
     def postprocess(self, accumulator):
