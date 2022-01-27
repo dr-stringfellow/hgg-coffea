@@ -188,9 +188,8 @@ class NanoProcessor(processor.ProcessorABC):
         ## Photon definition
         events.Photon = events.Photon[(((events.Photon.mvaID_WP80 > self.pho_mva80_barrel) & (abs(events.Photon.eta) <= 1.479))
                                       | ((events.Photon.mvaID_WP80 > self.pho_mva80_endcap) & (abs(events.Photon.eta) <= 2.4) 
-                                         & (abs(events.Photon.eta) <= 2.4))) & (events.Photon.pt > 300)]
+                                         & (abs(events.Photon.eta) <= 2.4))) & (events.Photon.pt > 220)]
         req_pho = (ak.count(events.Photon.pt > 220, axis=1) == 1)
-
 
         ## Preselection        
         presel = req_pho & req_ele & req_mu
@@ -243,6 +242,11 @@ class NanoProcessor(processor.ProcessorABC):
         all_fatjets_tau4 = ak.flatten(selev.FatJet.tau4)
         all_fatjets_lsf3 = ak.flatten(selev.FatJet.lsf3)
         all_fatjets_nPF = ak.count_nonzero(nested_pt,axis=1)
+
+
+        print(selev.SubJet.btagDeepB)
+        print(selev.FatJet.subJetIdx1)
+        print(selev.SubJet.btagDeepB[selev.FatJet.subJetIdx1])
 
         all_sj1 = ak.flatten(selev.SubJet.btagDeepB[selev.FatJet.subJetIdx1])
         all_sj2 = ak.flatten(selev.SubJet.btagDeepB[selev.FatJet.subJetIdx2])
