@@ -166,10 +166,10 @@ class NanoProcessor(processor.ProcessorABC):
                 'Photon200'
         ]
  
-       if self.year == 2016:
-        triggers = [
+        if self.year == 2016:
+            triggers = [
                 'Photon175'
-        ]
+            ]
 
         for f in filters:
             events = events[(getattr(events.Flag,f) == True)]

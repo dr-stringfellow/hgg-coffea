@@ -86,6 +86,7 @@ def get_main_parser():
     parser.add_argument('--isMC', type=int, default=1, help="Specify if the file is MC or data")
     parser.add_argument('--chunk', type=int, default=500000, metavar='N', help='Number of events per process chunk')
     parser.add_argument('--max', type=int, default=None, metavar='N', help='Max number of chunks to run in total')
+    parser.add_argument('--year', type=int, default=None, metavar='Y', help='Year')
     parser.add_argument('--dataset', type=str, default="X", help="Dataset to find xsection")
     return parser
 
@@ -157,10 +158,10 @@ if __name__ == '__main__':
         processor_instance = NanoProcessor()
     elif args.workflow == "mixing":
         from workflows.case_mixing import NanoProcessor
-        processor_instance = NanoProcessor(isMC=args.isMC,sample=args.dataset,output_location="/mnt/hadoop/scratch/bmaier/")
+        processor_instance = NanoProcessor(year=args.year,isMC=args.isMC,sample=args.dataset,output_location="/mnt/hadoop/scratch/bmaier/")
     elif args.workflow == "jetlibrary":
         from workflows.case_jetlibrary import NanoProcessor
-        processor_instance = NanoProcessor(isMC=args.isMC,sample=args.dataset,output_location="/mnt/hadoop/scratch/bmaier/")
+        processor_instance = NanoProcessor(year=args.year,isMC=args.isMC,sample=args.dataset,output_location="/mnt/hadoop/scratch/bmaier/")
     else:
         raise NotImplemented
 
