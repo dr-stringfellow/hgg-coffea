@@ -19,7 +19,7 @@ options = parser.parse_args()
 out_dir = os.getcwd()
 modules_era = []
 #Run the SUEP code. Note the xsection as input. For Data the xsection = 1.0 from above
-modules_era.append(NanoProcessor(isMC=options.isMC,sample=options.dataset,output_location="/mnt/hadoop/scratch/bmaier/"))
+modules_era.append(NanoProcessor(year=2017,isMC=options.isMC,sample=options.dataset,output_location="/mnt/hadoop/scratch/bmaier/"))
 
 for instance in modules_era:
     output = run_uproot_job(
