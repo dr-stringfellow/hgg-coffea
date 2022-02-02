@@ -15,11 +15,13 @@ class NanoProcessor(processor.ProcessorABC):
     # Define histograms
     def __init__(
             self,
+            year: int,
             isMC: int, 
             sample: str,
             output_location: Optional[str]
     ) -> None:
 
+        self.year = year
         self.isMC = isMC
         self.sample = sample
         self.output_location = output_location
@@ -163,6 +165,11 @@ class NanoProcessor(processor.ProcessorABC):
         triggers = [
                 'Photon200'
         ]
+ 
+       if self.year == 2016:
+        triggers = [
+                'Photon175'
+        ]
 
         for f in filters:
             events = events[(getattr(events.Flag,f) == True)]
@@ -271,8 +278,8 @@ class NanoProcessor(processor.ProcessorABC):
             (
                 nested_pt,
                 nested_eta,
-                nested_phi,
-                nested_m
+                nested_phi#,
+#                nested_m
             ),axis=2)
 
         # Write-out
