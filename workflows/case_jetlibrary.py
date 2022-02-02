@@ -163,7 +163,7 @@ class NanoProcessor(processor.ProcessorABC):
                   ]
 
         if self.year == 2016:
-            filters.append("Flag_CSCTightHaloFilter")
+            filters.append("CSCTightHaloFilter")
         
         triggers = [
                 'Photon200'
