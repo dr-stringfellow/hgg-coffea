@@ -25,10 +25,10 @@ class JetMixer():
         self.dist_and_ind = None
         
     def fillKDTree(self):
-        self.kdtree = KDTree(self.library[:,:4])
+        self.kdtree = KDTree(self.library[:,:3])
 
     def computeDistances(self):
-        self.dist_and_ind = self.kdtree.query(self.events[:,:4], k=2)
+        self.dist_and_ind = self.kdtree.query(self.events[:,:3], k=2)
 
     def replaceJets(self,jet_pfs,jet_extra):
         self.events = self.library[self.dist_and_ind[1][:,0]]
@@ -126,14 +126,24 @@ class JetMixer():
         plt.legend(frameon=False)
         plt.savefig("/home/bmaier/public_html/figs/case/mixing/phi.png",bbox_inches='tight',dpi=300)
 
+        fig,ax = plt.subplots()
+        bins_msd = np.linspace(0,300,40)
+        plt.hist(self.events_orig[:,3],label='before mixing',bins=bins_msd,histtype='step',density=True)
+        plt.hist(self.events[:,3],label='after mixing',bins=bins_msd,histtype='step',density=True)
+        plt.hist(self.library[:,3],label='$\gamma$+jets library',bins=bins_msd,histtype='step',density=True)
+        plt.xlabel("$m_\mathrm{SD}$ (GeV)")
+        plt.ylabel("Frequency")
+        plt.legend(frameon=False)
+        plt.savefig("/home/bmaier/public_html/figs/case/mixing/msd.png",bbox_inches='tight',dpi=300)
+
         #print(self.events_extra_orig[:,2]/self.events_extra_orig[:,1])
 
         
         fig,ax = plt.subplots()
-        bins_phi = np.linspace(0,2,40)
-        plt.hist(self.events_extra_orig[:,2]/self.events_extra_orig[:,1],label='before mixing',bins=bins_phi,histtype='step',density=True)
-        plt.hist(np.divide(self.events_extra[:,2], self.events_extra[:,1], out=np.zeros_like(self.events_extra[:,2]),where=self.events_extra[:,1]!=0),label='after mixing',bins=bins_phi,histtype='step',density=True)
-        plt.hist(np.divide(self.library_extra[:,2], self.library_extra[:,1], out=np.zeros_like(self.library_extra[:,2]),where=self.library_extra[:,1]!=0),label='$\gamma$+jets library',bins=bins_phi,histtype='step',density=True)
+        bins_tau32 = np.linspace(0,2,40)
+        plt.hist(self.events_extra_orig[:,2]/self.events_extra_orig[:,1],label='before mixing',bins=bins_tau32,histtype='step',density=True)
+        plt.hist(np.divide(self.events_extra[:,2], self.events_extra[:,1], out=np.zeros_like(self.events_extra[:,2]),where=self.events_extra[:,1]!=0),label='after mixing',bins=bins_tau32,histtype='step',density=True)
+        plt.hist(np.divide(self.library_extra[:,2], self.library_extra[:,1], out=np.zeros_like(self.library_extra[:,2]),where=self.library_extra[:,1]!=0),label='$\gamma$+jets library',bins=bins_tau32,histtype='step',density=True)
         plt.xlabel("$\\tau_{32}$")
         plt.ylabel("Frequency")
         plt.legend(frameon=False)
