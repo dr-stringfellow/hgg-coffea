@@ -36,16 +36,8 @@ class JetMixer():
         self.events_pfs = jet_pfs[self.dist_and_ind[1][:,0]]
 
         # sort pfs by pT
-
-        print("Before sorting")
-        print(self.events_pfs)
-
         orig_x = np.argsort(np.asarray(self.events_pfs)[...,0]*(-1), axis=1)
         self.events_pfs = np.take_along_axis(np.asarray(self.events_pfs), orig_x[...,None], axis=1)
-
-        print("After sorting")
-        print(self.events_pfs)
-        
 
         jet1 = self.events[:int(len(self.events)/2)]
         jet1[:,-1] = np.where(jet1[:,-1]>0,jet1[:,-1],0.1)
