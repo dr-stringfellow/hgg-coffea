@@ -4,6 +4,7 @@ import argparse
 import vector
 import glob
 import matplotlib.pyplot as plt
+import numpy as np
 
 from workflows.case_jetlibrary import *
 
@@ -15,7 +16,7 @@ class JetMixer():
         self.library = library
         self.library_extra = library_extra
         self.events = events
-        self.events_orig = events
+        self.events_orig = np.copy(events)
         self.events_orig_mjj_and_deta = events_mjj_and_deta
         self.events_extra = events_extra
         self.events_extra_orig = events_extra
@@ -28,7 +29,19 @@ class JetMixer():
         self.kdtree = KDTree(self.library[:,:3])
 
     def computeDistances(self):
-        self.dist_and_ind = self.kdtree.query(self.events[:,:3], k=2)
+        self.dist_and_ind = self.kdtree.query(self.events_orig[:,:3], k=2)
+        # plot reuse factor
+        unique, counts = np.unique(self.dist_and_ind[1][:,0], return_counts=True)
+        reuse = dict(zip(unique, counts))
+        fig,ax = plt.subplots()
+        bins = np.linspace(0,100,100)
+        #for i,v in reuse.items():
+        #    print(i,v)
+        plt.hist(counts,bins=bins)
+        plt.xlabel("Jet being reused N times")
+        plt.ylabel("Frequency")
+        plt.savefig("/home/bmaier/public_html/figs/case/mixing/reuse.png",bbox_inches='tight',dpi=300)
+
 
     def replaceJets(self,jet_pfs,jet_extra):
         self.events = self.library[self.dist_and_ind[1][:,0]]

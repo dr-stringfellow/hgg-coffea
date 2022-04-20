@@ -59,6 +59,8 @@ class NanoProcessor(processor.ProcessorABC):
         # https://twiki.cern.ch/twiki/bin/view/CMS/MultivariatePhotonIdentificationRun2#Training_details_and_working_poi
         self.pho_mva80_barrel = 0.42
         self.pho_mva80_endcap = 0.14
+        self.pho_mva90_barrel = -0.02
+        self.pho_mva90_endcap = -0.26
 
     @property
     def accumulator(self):
@@ -198,8 +200,8 @@ class NanoProcessor(processor.ProcessorABC):
         ## Photon definition
         events.Photon = events.Photon[(((events.Photon.mvaID_WP80 > self.pho_mva80_barrel) & (abs(events.Photon.eta) <= 1.479))
                                       | ((events.Photon.mvaID_WP80 > self.pho_mva80_endcap) & (abs(events.Photon.eta) <= 2.4) 
-                                         & (abs(events.Photon.eta) <= 2.4))) & (events.Photon.pt > 220)]
-        req_pho = (ak.count(events.Photon.pt > 220, axis=1) == 1)
+                                         & (abs(events.Photon.eta) > 1.479))) & (events.Photon.pt > 200)]
+        req_pho = (ak.count(events.Photon.pt > 200, axis=1) == 1)
 
         ## Preselection        
         presel = req_pho & req_ele & req_mu
