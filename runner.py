@@ -43,7 +43,7 @@ def get_main_parser():
     parser.add_argument('--wf',
                         '--workflow',
                         dest='workflow',
-                        choices=['ttcom', 'case', 'mixing', 'jetlibrary'],
+                        choices=['ttcom', 'case', 'mixing', 'jetlibrary', 'qg'],
                         help='Which processor to run',
                         required=True)
     parser.add_argument('-o', '--output', default=r'hists.coffea', help='Output histogram filename (default: %(default)s)')
@@ -87,6 +87,7 @@ def get_main_parser():
     parser.add_argument('--chunk', type=int, default=500000, metavar='N', help='Number of events per process chunk')
     parser.add_argument('--max', type=int, default=None, metavar='N', help='Max number of chunks to run in total')
     parser.add_argument('--year', type=int, default=None, metavar='Y', help='Year')
+    parser.add_argument('--partonmatch', type=int, default=None, metavar='P', help='Partonmatch')
     parser.add_argument('--dataset', type=str, default="X", help="Dataset to find xsection")
     return parser
 
@@ -162,6 +163,9 @@ if __name__ == '__main__':
     elif args.workflow == "jetlibrary":
         from workflows.case_jetlibrary import NanoProcessor
         processor_instance = NanoProcessor(year=args.year,isMC=args.isMC,sample=args.dataset,output_location="/mnt/hadoop/scratch/bmaier/")
+    elif args.workflow == "qg":
+        from workflows.case_qg import NanoProcessor
+        processor_instance = NanoProcessor(year=args.year,partonmatch=args.partonmatch,isMC=args.isMC,sample=args.dataset,output_location="/mnt/hadoop/scratch/bmaier/")
     else:
         raise NotImplemented
 
